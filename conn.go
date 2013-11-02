@@ -62,6 +62,10 @@ type Conn struct {
 	eavesdroppedLck sync.Mutex
 }
 
+func (c *Conn) GetObjectInfos(path ObjectPath) map[string]interface{} {
+	return c.handlers[path]
+}
+
 // SessionBus returns a shared connection to the session bus, connecting to it
 // if not already done.
 func SessionBus() (conn *Conn, err error) {
