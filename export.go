@@ -30,12 +30,6 @@ func exportedMethod(v interface{}, name string) reflect.Value {
 	if !m.IsValid() {
 		return reflect.Value{}
 	}
-	t := m.Type()
-	if t.NumOut() == 0 ||
-		t.Out(t.NumOut()-1) != reflect.TypeOf(&errmsgInvalidArg) {
-
-		return reflect.Value{}
-	}
 	return m
 }
 
@@ -93,6 +87,7 @@ func (conn *Conn) handleCall(msg *Message) {
 		conn.sendError(errmsgUnknownMethod, sender, serial)
 		return
 	}
+
 	var m reflect.Value
 	if hasIface {
 		conn.handlersLck.RLock()
@@ -143,9 +138,13 @@ func (conn *Conn) handleCall(msg *Message) {
 		params[i] = reflect.ValueOf(pointers[i]).Elem()
 	}
 	ret := m.Call(params)
-	if em := ret[t.NumOut()-1].Interface().(*Error); em != nil {
-		conn.sendError(*em, sender, serial)
-		return
+	out_n := t.NumOut()
+	if out_n > 0 && ret[out_n-1].Type() == reflect.TypeOf(&errmsgInvalidArg) {
+		if em := ret[out_n-1].Interface().(*Error); em != nil {
+			conn.sendError(*em, sender, serial)
+			return
+		}
+		ret = ret[:out_n-1]
 	}
 	if msg.Flags&FlagNoReplyExpected == 0 {
 		reply := new(Message)
@@ -154,11 +153,11 @@ func (conn *Conn) handleCall(msg *Message) {
 		reply.Headers = make(map[HeaderField]Variant)
 		reply.Headers[FieldDestination] = msg.Headers[FieldSender]
 		reply.Headers[FieldReplySerial] = MakeVariant(msg.serial)
-		reply.Body = make([]interface{}, len(ret)-1)
-		for i := 0; i < len(ret)-1; i++ {
+		reply.Body = make([]interface{}, len(ret))
+		for i := 0; i < len(ret); i++ {
 			reply.Body[i] = ret[i].Interface()
 		}
-		if len(ret) != 1 {
+		if len(ret) != 0 {
 			reply.Headers[FieldSignature] = MakeVariant(SignatureOf(reply.Body...))
 		}
 		conn.outLck.RLock()
