@@ -39,6 +39,30 @@ func exportedMethod(v interface{}, name string) reflect.Value {
 	return m
 }
 
+func handleIntrospectionPartialPathRequest(possible_path []string, partial_path string) string {
+	var xml string = `<node>`
+	valid_field := make(map[string]bool)
+	for _, path := range possible_path {
+		begin := strings.Index(path, partial_path)
+		if begin != -1 {
+			path = path[begin+len(partial_path):]
+			if path[0] == '/' {
+				path = path[1:]
+			}
+			end := strings.Index(path, "/")
+			if end != -1 {
+				path = path[:end]
+			}
+			valid_field[path] = true
+		}
+	}
+	for k, _ := range valid_field {
+		xml += `	<node name="` + k + `"/>`
+	}
+	xml += `</node>`
+	return xml
+}
+
 // handleCall handles the given method call (i.e. looks if it's one of the
 // pre-implemented ones and searches for a corresponding handler if not).
 func (conn *Conn) handleCall(msg *Message) {
@@ -57,9 +81,17 @@ func (conn *Conn) handleCall(msg *Message) {
 			conn.sendError(errmsgUnknownMethod, sender, serial)
 		}
 		return
+	} else if _, ok := conn.handlers[path]; !ok && ifaceName == "org.freedesktop.DBus.Introspectable" && name == "Introspect" {
+		paths := make([]string, 0)
+		for key, _ := range conn.handlers {
+			paths = append(paths, string(key))
+		}
+		conn.sendReply(sender, serial, handleIntrospectionPartialPathRequest(paths, string(path)))
+		return
 	}
 	if len(name) == 0 || unicode.IsLower([]rune(name)[0]) {
 		conn.sendError(errmsgUnknownMethod, sender, serial)
+		return
 	}
 	var m reflect.Value
 	if hasIface {
