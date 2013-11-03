@@ -5,7 +5,7 @@ import "reflect"
 import "github.com/guelfey/go.dbus"
 import "encoding/xml"
 import "bytes"
-import "fmt"
+import "errors"
 
 func getTypeOf(ifc interface{}) (r reflect.Type) {
 	r = reflect.TypeOf(ifc)
@@ -68,7 +68,6 @@ func GenInterfaceInfo(ifc interface{}) *Interface {
 				Name: field.Name,
 				Args: func() []Arg {
 					n := field.Type.NumIn()
-					fmt.Println(field.Type.Name(), "in:", n)
 					ret := make([]Arg, n)
 					for i := 0; i < n; i++ {
 						arg := field.Type.In(i)
@@ -79,7 +78,6 @@ func GenInterfaceInfo(ifc interface{}) *Interface {
 					return ret
 				}(),
 			})
-			fmt.Println("Signl !", field)
 		} else if field.PkgPath == "" {
 			access := field.Tag.Get("access")
 			if access != "read" {
@@ -127,7 +125,6 @@ func (i IntrospectProxy) Introspect() (string, *dbus.Error) {
 	writer := xml.NewEncoder(&buffer)
 	writer.Indent("", "     ")
 	writer.Encode(node)
-	fmt.Println(buffer.String())
 	return buffer.String(), nil
 }
 
@@ -173,8 +170,6 @@ func (i PropertiesProxy) Set(ifc_name string, prop_name string, value dbus.Varia
 				v.Set(reflect.ValueOf(value.Value()))
 				return nil
 			} else {
-				fmt.Println(ifc_t)
-				fmt.Println(reflect.TypeOf(value.Value()))
 				return &errPropertyNotWritable
 			}
 		} else {
@@ -196,7 +191,22 @@ func (i PropertiesProxy) Get(ifc_name string, prop_name string) (dbus.Variant, *
 	}
 }
 
-func Export(c *dbus.Conn, v interface{}, path dbus.ObjectPath, iface string) error {
+func Export(c *dbus.Conn, v interface{}, name string, path dbus.ObjectPath, iface string) error {
+	not_registered := true
+	for _, _name := range c.Names() {
+		if _name == name {
+			not_registered = false
+			break
+		}
+
+	}
+	if not_registered {
+		reply, _ := c.RequestName(name, dbus.NameFlagDoNotQueue)
+		if reply != dbus.RequestNameReplyPrimaryOwner {
+			return errors.New("name " + name + " already taken")
+		}
+	}
+
 	err := c.Export(v, path, iface)
 	if err != nil {
 		return err
