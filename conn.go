@@ -339,6 +339,7 @@ func (conn *Conn) inWorker() {
 					}
 				}
 				conn.signalsLck.Unlock()
+				go conn.HandleSignal(signal)
 			case TypeMethodCall:
 				go conn.handleCall(msg)
 			}

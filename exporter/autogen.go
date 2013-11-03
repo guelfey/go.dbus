@@ -25,7 +25,7 @@ func getValueOf(ifc interface{}) (r reflect.Value) {
 
 func GenInterfaceInfo(ifc interface{}) *Interface {
 	ifc_info := new(Interface)
-	o_type := getTypeOf(ifc)
+	o_type := reflect.TypeOf(ifc)
 	n := o_type.NumMethod()
 
 	for i := 0; i < n; i++ {
@@ -57,6 +57,9 @@ func GenInterfaceInfo(ifc interface{}) *Interface {
 	}
 
 	// generate properties if any
+	if o_type.Kind() == reflect.Ptr {
+		o_type = o_type.Elem()
+	}
 	n = o_type.NumField()
 	for i := 0; i < n; i++ {
 		field := o_type.Field(i)
@@ -166,7 +169,7 @@ func (i PropertiesProxy) Set(ifc_name string, prop_name string, value dbus.Varia
 		t, ok := ifc_t.FieldByName(prop_name)
 		v := getValueOf(ifc).FieldByName(prop_name)
 		if ok && v.IsValid() {
-			if "read" != t.Tag.Get("access") && v.Type() == reflect.TypeOf(value.Value()) {
+			if v.CanAddr() && "read" != t.Tag.Get("access") && v.Type() == reflect.TypeOf(value.Value()) {
 				v.Set(reflect.ValueOf(value.Value()))
 				return nil
 			} else {
