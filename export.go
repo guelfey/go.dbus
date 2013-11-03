@@ -2,6 +2,7 @@ package dbus
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"unicode"
@@ -30,13 +31,53 @@ func exportedMethod(v interface{}, name string) reflect.Value {
 	if !m.IsValid() {
 		return reflect.Value{}
 	}
-	t := m.Type()
-	if t.NumOut() == 0 ||
-		t.Out(t.NumOut()-1) != reflect.TypeOf(&errmsgInvalidArg) {
-
-		return reflect.Value{}
-	}
 	return m
+}
+
+func handleIntrospectionPartialPathRequest(possible_path []string, partial_path string) string {
+	var xml string = `<node>`
+	valid_field := make(map[string]bool)
+	for _, path := range possible_path {
+		begin := strings.Index(path, partial_path)
+		if begin != -1 {
+			path = path[begin+len(partial_path):]
+			if path[0] == '/' {
+				path = path[1:]
+			}
+			end := strings.Index(path, "/")
+			if end != -1 {
+				path = path[:end]
+			}
+			valid_field[path] = true
+		}
+	}
+	for k, _ := range valid_field {
+		xml += `	<node name="` + k + `"/>`
+	}
+	xml += `</node>`
+	return xml
+}
+
+func (conn *Conn) HandleSignal(signal *Signal) {
+	if node, ok := conn.handlers[signal.Path]; ok {
+		idx := strings.LastIndex(signal.Name, ".")
+		iface := signal.Name[:idx]
+		if ifc, ok := node[iface]; ok {
+			name := signal.Name[idx+1:]
+			v := reflect.ValueOf(ifc)
+			if v.Kind() == reflect.Ptr {
+				v = v.Elem()
+			}
+			sig_handler := v.FieldByName(name)
+			if sig_handler.IsValid() && !sig_handler.IsNil() && sig_handler.Type().NumOut() == 0 && sig_handler.Type().NumIn() == len(signal.Body) {
+				inputs := make([]reflect.Value, len(signal.Body))
+				for i := 0; i < len(inputs); i++ {
+					inputs[i] = reflect.ValueOf(signal.Body[i])
+				}
+				sig_handler.Call(inputs)
+			}
+		}
+	}
 }
 
 // handleCall handles the given method call (i.e. looks if it's one of the
@@ -57,10 +98,19 @@ func (conn *Conn) handleCall(msg *Message) {
 			conn.sendError(errmsgUnknownMethod, sender, serial)
 		}
 		return
+	} else if _, ok := conn.handlers[path]; !ok && ifaceName == "org.freedesktop.DBus.Introspectable" && name == "Introspect" {
+		paths := make([]string, 0)
+		for key, _ := range conn.handlers {
+			paths = append(paths, string(key))
+		}
+		conn.sendReply(sender, serial, handleIntrospectionPartialPathRequest(paths, string(path)))
+		return
 	}
 	if len(name) == 0 || unicode.IsLower([]rune(name)[0]) {
 		conn.sendError(errmsgUnknownMethod, sender, serial)
+		return
 	}
+
 	var m reflect.Value
 	if hasIface {
 		conn.handlersLck.RLock()
@@ -111,9 +161,13 @@ func (conn *Conn) handleCall(msg *Message) {
 		params[i] = reflect.ValueOf(pointers[i]).Elem()
 	}
 	ret := m.Call(params)
-	if em := ret[t.NumOut()-1].Interface().(*Error); em != nil {
-		conn.sendError(*em, sender, serial)
-		return
+	out_n := t.NumOut()
+	if out_n > 0 && ret[out_n-1].Type() == reflect.TypeOf(&errmsgInvalidArg) {
+		if em := ret[out_n-1].Interface().(*Error); em != nil {
+			conn.sendError(*em, sender, serial)
+			return
+		}
+		ret = ret[:out_n-1]
 	}
 	if msg.Flags&FlagNoReplyExpected == 0 {
 		reply := new(Message)
@@ -122,11 +176,11 @@ func (conn *Conn) handleCall(msg *Message) {
 		reply.Headers = make(map[HeaderField]Variant)
 		reply.Headers[FieldDestination] = msg.Headers[FieldSender]
 		reply.Headers[FieldReplySerial] = MakeVariant(msg.serial)
-		reply.Body = make([]interface{}, len(ret)-1)
-		for i := 0; i < len(ret)-1; i++ {
+		reply.Body = make([]interface{}, len(ret))
+		for i := 0; i < len(ret); i++ {
 			reply.Body[i] = ret[i].Interface()
 		}
-		if len(ret) != 1 {
+		if len(ret) != 0 {
 			reply.Headers[FieldSignature] = MakeVariant(SignatureOf(reply.Body...))
 		}
 		conn.outLck.RLock()
@@ -172,6 +226,7 @@ func (conn *Conn) Emit(path ObjectPath, name string, values ...interface{}) erro
 		return ErrClosed
 	}
 	conn.out <- msg
+	fmt.Println("Emit:", msg)
 	return nil
 }
 
