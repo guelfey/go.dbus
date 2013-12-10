@@ -30,6 +30,7 @@ func (s *unixServer) Accept() (*Conn, error) {
 	var err error
 
 	t := new(unixTransport)
+	t.EnableUnixFDs()
 	t.UnixConn, err = s.listener.AcceptUnix()
 	if err != nil {
 		return nil, err
