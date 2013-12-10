@@ -32,11 +32,14 @@ func (h handler) GotConnection(server dbus.Server, conn *dbus.Conn) {
 	conn.Export(h.f, "/com/github/guelfey/Demo/PeerServer", "com.github.guelfey.PeerServer")
 	conn.Export(introspect.Introspectable(intro), "/com/github/guelfey/Demo/PeerServer",
 		"org.freedesktop.DBus.Introspectable")
+	if err := conn.ServerAuth(nil, server.Uuid()); err != nil {
+		panic(err)
+	}
 }
 
 func main() {
 	err := os.Remove("socket")
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		panic(err)
 	}
 	server, err := dbus.NewServer("unix:path=./socket", "1234567890123456")
@@ -46,8 +49,5 @@ func main() {
 	fmt.Println("Listening on unix:path=./socket")
 
 	h := handler{foo("Bar!")}
-	err = dbus.Serve(server, h)
-	if err != nil {
-		panic(err)
-	}
+	dbus.Serve(server, h)
 }

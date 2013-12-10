@@ -70,17 +70,14 @@ func newUnixServer(keys string, uuid string) (Server, error) {
 // calling GotConnection on the supplied Handler object. The
 // authentication and the handler callback are run in a separate
 // goroutine for each client connection.
-func Serve(s Server, h Handler) error {
+func Serve(s Server, h Handler) {
 	for {
 		conn, err := s.Accept()
-		if err != nil {
-			panic(err)
-		}
-		go func() {
-			if err = conn.ServerAuth(nil, s.Uuid()); err == nil {
+		if err == nil {
+			go func() {
 				h.GotConnection(s, conn)
-			}
-		}()
+			}()
+		}
 	}
 }
 
