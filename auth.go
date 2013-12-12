@@ -56,7 +56,7 @@ func (conn *Conn) Auth(methods []Auth) error {
 		if err != nil {
 			return err
 		}
-		methods = []Auth{AuthExternal(u.Username), AuthCookieSha1(u.Username, u.HomeDir)}
+		methods = []Auth{AuthExternal(u.Uid), AuthCookieSha1(u.Username, u.HomeDir)}
 	}
 	in := bufio.NewReader(conn.transport)
 	err := conn.transport.SendNullByte()
