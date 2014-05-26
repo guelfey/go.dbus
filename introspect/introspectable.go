@@ -50,7 +50,7 @@ func Methods(v interface{}) []Method {
 		}
 		mt := t.Method(i).Type
 		if mt.NumOut() == 0 ||
-			mt.Out(mt.NumOut()-1) != reflect.TypeOf(&dbus.Error{"", nil}) {
+			mt.Out(mt.NumOut()-1) != reflect.TypeOf(&dbus.Error{}) {
 
 			continue
 		}
