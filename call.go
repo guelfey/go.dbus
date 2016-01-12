@@ -69,6 +69,19 @@ func (o *Object) GetProperty(p string) (Variant, error) {
 	return result, nil
 }
 
+// SetProperty calls org.freedesktop.DBus.Properties.Set on the given
+// object. The property name must be given in interface.member notation.
+func (o *Object) SetProperty(p string, v Variant) error {
+	idx := strings.LastIndex(p, ".")
+	if idx == -1 || idx+1 == len(p) {
+		return errors.New("dbus: invalid property " + p)
+	}
+
+	iface := p[:idx]
+	prop := p[idx+1:]
+	return o.Call("org.freedesktop.DBus.Properties.Set", 0, iface, prop, v).Err
+}
+
 // Go calls a method with the given arguments asynchronously. It returns a
 // Call structure representing this method call. The passed channel will
 // return the same value once the call is done. If ch is nil, a new channel
