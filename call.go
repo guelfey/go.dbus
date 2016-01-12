@@ -48,7 +48,7 @@ func (o *Object) Call(method string, flags Flags, args ...interface{}) *Call {
 	return <-o.Go(method, flags, make(chan *Call, 1), args...).Done
 }
 
-// GetProperty calls org.freedesktop.DBus.Properties.GetProperty on the given
+// GetProperty calls org.freedesktop.DBus.Properties.Get on the given
 // object. The property name must be given in interface.member notation.
 func (o *Object) GetProperty(p string) (Variant, error) {
 	idx := strings.LastIndex(p, ".")
