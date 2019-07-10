@@ -158,11 +158,11 @@ func benchmarkServe(b *testing.B, srv, cli *Conn) {
 	var r int64
 	var err error
 	dest := srv.Names()[0]
-	srv.Export(server{}, "/org/guelfey/DBus/Test", "org.guelfey.DBus.Test")
-	obj := cli.Object(dest, "/org/guelfey/DBus/Test")
+	srv.Export(server{}, "/org/keybase/DBus/Test", "org.keybase.DBus.Test")
+	obj := cli.Object(dest, "/org/keybase/DBus/Test")
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		err = obj.Call("org.guelfey.DBus.Test.Double", 0, int64(i)).Store(&r)
+		err = obj.Call("org.keybase.DBus.Test.Double", 0, int64(i)).Store(&r)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -174,8 +174,8 @@ func benchmarkServe(b *testing.B, srv, cli *Conn) {
 
 func benchmarkServeAsync(b *testing.B, srv, cli *Conn) {
 	dest := srv.Names()[0]
-	srv.Export(server{}, "/org/guelfey/DBus/Test", "org.guelfey.DBus.Test")
-	obj := cli.Object(dest, "/org/guelfey/DBus/Test")
+	srv.Export(server{}, "/org/keybase/DBus/Test", "org.keybase.DBus.Test")
+	obj := cli.Object(dest, "/org/keybase/DBus/Test")
 	c := make(chan *Call, 50)
 	done := make(chan struct{})
 	go func() {
@@ -193,7 +193,7 @@ func benchmarkServeAsync(b *testing.B, srv, cli *Conn) {
 	}()
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		obj.Go("org.guelfey.DBus.Test.Double", 0, c, int64(i))
+		obj.Go("org.keybase.DBus.Test.Double", 0, c, int64(i))
 	}
 	<-done
 }

@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/guelfey/go.dbus"
-	"github.com/guelfey/go.dbus/introspect"
+	"github.com/keybase/go.dbus"
+	"github.com/keybase/go.dbus/introspect"
 	"os"
 )
 

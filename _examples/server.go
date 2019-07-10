@@ -2,14 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/guelfey/go.dbus"
-	"github.com/guelfey/go.dbus/introspect"
+	"github.com/keybase/go.dbus"
+	"github.com/keybase/go.dbus/introspect"
 	"os"
 )
 
 const intro = `
 <node>
-	<interface name="com.github.guelfey.Demo">
+	<interface name="com.github.keybase.Demo">
 		<method name="Foo">
 			<arg direction="out" type="s"/>
 		</method>
@@ -27,7 +27,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	reply, err := conn.RequestName("com.github.guelfey.Demo",
+	reply, err := conn.RequestName("com.github.keybase.Demo",
 		dbus.NameFlagDoNotQueue)
 	if err != nil {
 		panic(err)
@@ -37,9 +37,9 @@ func main() {
 		os.Exit(1)
 	}
 	f := foo("Bar!")
-	conn.Export(f, "/com/github/guelfey/Demo", "com.github.guelfey.Demo")
-	conn.Export(introspect.Introspectable(intro), "/com/github/guelfey/Demo",
+	conn.Export(f, "/com/github/keybase/Demo", "com.github.keybase.Demo")
+	conn.Export(introspect.Introspectable(intro), "/com/github/keybase/Demo",
 		"org.freedesktop.DBus.Introspectable")
-	fmt.Println("Listening on com.github.guelfey.Demo / /com/github/guelfey/Demo ...")
+	fmt.Println("Listening on com.github.keybase.Demo / /com/github/keybase/Demo ...")
 	select {}
 }
