@@ -1,6 +1,6 @@
 package main
 
-import "github.com/guelfey/go.dbus"
+import "github.com/keybase/go.dbus"
 
 func main() {
 	conn, err := dbus.SessionBus()

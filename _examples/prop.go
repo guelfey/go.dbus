@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/guelfey/go.dbus"
-	"github.com/guelfey/go.dbus/introspect"
-	"github.com/guelfey/go.dbus/prop"
+	"github.com/keybase/go.dbus"
+	"github.com/keybase/go.dbus/introspect"
+	"github.com/keybase/go.dbus/prop"
 	"os"
 )
 
@@ -20,7 +20,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	reply, err := conn.RequestName("com.github.guelfey.Demo",
+	reply, err := conn.RequestName("com.github.keybase.Demo",
 		dbus.NameFlagDoNotQueue)
 	if err != nil {
 		panic(err)
@@ -30,7 +30,7 @@ func main() {
 		os.Exit(1)
 	}
 	propsSpec := map[string]map[string]*prop.Prop{
-		"com.github.guelfey.Demo": {
+		"com.github.keybase.Demo": {
 			"SomeInt": {
 				int32(0),
 				true,
@@ -43,23 +43,23 @@ func main() {
 		},
 	}
 	f := foo("Bar")
-	conn.Export(f, "/com/github/guelfey/Demo", "com.github.guelfey.Demo")
-	props := prop.New(conn, "/com/github/guelfey/Demo", propsSpec)
+	conn.Export(f, "/com/github/keybase/Demo", "com.github.keybase.Demo")
+	props := prop.New(conn, "/com/github/keybase/Demo", propsSpec)
 	n := &introspect.Node{
-		Name: "/com/github/guelfey/Demo",
+		Name: "/com/github/keybase/Demo",
 		Interfaces: []introspect.Interface{
 			introspect.IntrospectData,
 			prop.IntrospectData,
 			{
-				Name:       "com.github.guelfey.Demo",
+				Name:       "com.github.keybase.Demo",
 				Methods:    introspect.Methods(f),
-				Properties: props.Introspection("com.github.guelfey.Demo"),
+				Properties: props.Introspection("com.github.keybase.Demo"),
 			},
 		},
 	}
-	conn.Export(introspect.NewIntrospectable(n), "/com/github/guelfey/Demo",
+	conn.Export(introspect.NewIntrospectable(n), "/com/github/keybase/Demo",
 		"org.freedesktop.DBus.Introspectable")
-	fmt.Println("Listening on com.github.guelfey.Demo / /com/github/guelfey/Demo ...")
+	fmt.Println("Listening on com.github.keybase.Demo / /com/github/keybase/Demo ...")
 
 	c := make(chan *dbus.Signal)
 	conn.Signal(c)
