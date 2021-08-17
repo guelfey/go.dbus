@@ -1,7 +1,6 @@
 package dbus
 
 import (
-	"encoding/hex"
 )
 
 // AuthExternal returns an Auth that authenticates as the given user with the
@@ -16,11 +15,14 @@ type authExternal struct {
 }
 
 func (a authExternal) FirstData() ([]byte, []byte, AuthStatus) {
-	b := make([]byte, 2*len(a.user))
-	hex.Encode(b, []byte(a.user))
-	return []byte("EXTERNAL"), b, AuthOk
+	//b := make([]byte, 2*len(a.user))
+	//hex.Encode(b, []byte(a.user))
+	return []byte("EXTERNAL"), nil, AuthContinue
 }
 
-func (a authExternal) HandleData(b []byte) ([]byte, AuthStatus) {
-	return nil, AuthError
+func (a authExternal) HandleData(data [][]byte) ([][]byte, AuthStatus) {
+	if (len(data) != 0) {
+		return nil, AuthError
+	}
+	return nil, AuthOk
 }
