@@ -6,7 +6,12 @@ import (
 	"errors"
 	"io"
 	"os/user"
+	"log"
 )
+
+// For debug purposes the dbus.TraceAuth flag may be set to "true"
+// by the client.
+var TraceAuth bool = false
 
 // AuthStatus represents the Status of an authentication mechanism.
 type AuthStatus byte
@@ -224,12 +229,27 @@ func authReadLine(in *bufio.Reader) ([][]byte, error) {
 		return nil, err
 	}
 	data = bytes.TrimSuffix(data, []byte("\r\n"))
-	return bytes.Split(data, []byte{' '}), nil
+	fields := bytes.Split(data, []byte{' '})
+	if (TraceAuth) {
+		log.Print("authReadLine():")
+		for _, v := range fields {
+			log.Print("    ", string(v))
+		}
+	}
+	return fields, nil
+
 }
 
 // authWriteLine writes the given line in the authentication protocol format
 // (elements of data separated by a " " and terminated by "\r\n").
 func authWriteLine(out io.Writer, msg []byte, data ...[]byte) error {
+	if (TraceAuth) {
+		log.Print("authWriteLine():")
+		log.Print("    ", msg)
+		for _, v := range data {
+			log.Print("    ", string(v))
+		}
+	}
 	buf := make([]byte, 0)
 	buf = append(buf, msg...)
 	if (len(data) > 0) {
