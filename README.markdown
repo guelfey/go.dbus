@@ -35,6 +35,22 @@ gives a short overview over the basic usage.
 Please note that the API is considered unstable for now and may change without
 further notice.
 
+### Local development
+
+To work with a local copy for development, run
+
+```
+go mod init
+go mod tidy
+```
+
+then in your own `go.mod`, assuming you checked out `go.dbus` in your project
+directory:
+
+```
+replace github.com/guelfey/go.dbus => ./go.dbus
+```
+
 ### License
 
 go.dbus is available under the Simplified BSD License; see LICENSE for the full

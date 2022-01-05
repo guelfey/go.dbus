@@ -26,7 +26,11 @@ func (a authCookieSha1) FirstData() ([]byte, []byte, AuthStatus) {
 	return []byte("DBUS_COOKIE_SHA1"), b, AuthContinue
 }
 
-func (a authCookieSha1) HandleData(data []byte) ([]byte, AuthStatus) {
+func (a authCookieSha1) HandleData(fields [][]byte) ([][]byte, AuthStatus) {
+	if (len(fields) != 1) {
+		return nil, AuthError
+	}
+	data := fields[0]
 	challenge := make([]byte, len(data)/2)
 	_, err := hex.Decode(challenge, data)
 	if err != nil {
@@ -55,7 +59,7 @@ func (a authCookieSha1) HandleData(data []byte) ([]byte, AuthStatus) {
 	data = append(data, hexhash...)
 	resp := make([]byte, 2*len(data))
 	hex.Encode(resp, data)
-	return resp, AuthOk
+	return [][]byte{resp}, AuthOk
 }
 
 // getCookie searches for the cookie identified by id in context and returns

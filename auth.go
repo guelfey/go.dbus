@@ -6,7 +6,12 @@ import (
 	"errors"
 	"io"
 	"os/user"
+	"log"
 )
+
+// For debug purposes the dbus.TraceAuth flag may be set to "true"
+// by the client.
+var TraceAuth bool = false
 
 // AuthStatus represents the Status of an authentication mechanism.
 type AuthStatus byte
@@ -42,7 +47,7 @@ type Auth interface {
 
 	// Process the given DATA command, and return the argument to the DATA
 	// command and the next status. If len(resp) == 0, no DATA command is sent.
-	HandleData(data []byte) (resp []byte, status AuthStatus)
+	HandleData(data [][]byte) (resp [][]byte, status AuthStatus)
 }
 
 // Auth authenticates the connection, trying the given list of authentication
@@ -79,17 +84,21 @@ func (conn *Conn) Auth(methods []Auth) error {
 		for _, m := range methods {
 			if name, data, status := m.FirstData(); bytes.Equal(v, name) {
 				var ok bool
-				err = authWriteLine(conn.transport, []byte("AUTH"), []byte(v), data)
+				if (data != nil) {
+					err = authWriteLine(conn.transport, []byte("AUTH"), []byte(v), data)
+				} else {
+					err = authWriteLine(conn.transport, []byte("AUTH"), []byte(v))
+				}
 				if err != nil {
 					return err
 				}
 				switch status {
-				case AuthOk:
-					err, ok = conn.tryAuth(m, waitingForOk, in)
-				case AuthContinue:
-					err, ok = conn.tryAuth(m, waitingForData, in)
-				default:
-					panic("dbus: invalid authentication status")
+					case AuthOk:
+						err, ok = conn.tryAuth(m, waitingForOk, in)
+					case AuthContinue:
+						err, ok = conn.tryAuth(m, waitingForData, in)
+					default:
+						panic("dbus: invalid authentication status")
 				}
 				if err != nil {
 					return err
@@ -105,12 +114,12 @@ func (conn *Conn) Auth(methods []Auth) error {
 							return err
 						}
 						switch {
-						case bytes.Equal(line[0], []byte("AGREE_UNIX_FD")):
-							conn.EnableUnixFDs()
-							conn.unixFD = true
-						case bytes.Equal(line[0], []byte("ERROR")):
-						default:
-							return errors.New("dbus: authentication protocol error")
+							case bytes.Equal(line[0], []byte("AGREE_UNIX_FD")):
+								conn.EnableUnixFDs()
+								conn.unixFD = true
+							case bytes.Equal(line[0], []byte("ERROR")):
+							default:
+								return errors.New("dbus: authentication protocol error")
 						}
 					}
 					err = authWriteLine(conn.transport, []byte("BEGIN"))
@@ -139,21 +148,12 @@ func (conn *Conn) tryAuth(m Auth, state authState, in *bufio.Reader) (error, boo
 		}
 		switch {
 		case state == waitingForData && string(s[0]) == "DATA":
-			if len(s) != 2 {
-				err = authWriteLine(conn.transport, []byte("ERROR"))
-				if err != nil {
-					return err, false
-				}
-				continue
-			}
-			data, status := m.HandleData(s[1])
+			data, status := m.HandleData(s[1:])
 			switch status {
 			case AuthOk, AuthContinue:
-				if len(data) != 0 {
-					err = authWriteLine(conn.transport, []byte("DATA"), data)
-					if err != nil {
-						return err, false
-					}
+				err = authWriteLine(conn.transport, []byte("DATA"), data...)
+				if err != nil {
+					return err, false
 				}
 				if status == AuthOk {
 					state = waitingForOk
@@ -229,13 +229,32 @@ func authReadLine(in *bufio.Reader) ([][]byte, error) {
 		return nil, err
 	}
 	data = bytes.TrimSuffix(data, []byte("\r\n"))
-	return bytes.Split(data, []byte{' '}), nil
+	fields := bytes.Split(data, []byte{' '})
+	if (TraceAuth) {
+		log.Print("authReadLine():")
+		for _, v := range fields {
+			log.Print("    ", string(v))
+		}
+	}
+	return fields, nil
+
 }
 
 // authWriteLine writes the given line in the authentication protocol format
 // (elements of data separated by a " " and terminated by "\r\n").
-func authWriteLine(out io.Writer, data ...[]byte) error {
+func authWriteLine(out io.Writer, msg []byte, data ...[]byte) error {
+	if (TraceAuth) {
+		log.Print("authWriteLine():")
+		log.Print("    ", msg)
+		for _, v := range data {
+			log.Print("    ", string(v))
+		}
+	}
 	buf := make([]byte, 0)
+	buf = append(buf, msg...)
+	if (len(data) > 0) {
+		buf = append(buf, ' ')
+	}
 	for i, v := range data {
 		buf = append(buf, v...)
 		if i != len(data)-1 {
