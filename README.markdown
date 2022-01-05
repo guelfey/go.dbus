@@ -1,3 +1,8 @@
+NOTE
+----
+
+This repository is now archived. Please use the official repo https://github.com/godbus/dbus instead, where development is continued.
+
 go.dbus
 -------
 
